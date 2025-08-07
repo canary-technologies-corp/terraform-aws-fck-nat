@@ -55,4 +55,61 @@ if [ -n "${TERRAFORM_VPC_CIDR}" ]; then
     fi
 fi
 
+# Configure ip6tables for IPv6 traffic if VPC has IPv6 CIDR
+if [ -n "${TERRAFORM_VPC_IPV6_CIDR}" ]; then
+    # Drop all inbound IPv6 traffic by default
+    ip6tables -P INPUT DROP
+
+    # Allow loopback traffic
+    ip6tables -A INPUT -i lo -j ACCEPT
+
+    # Allow established and related connections
+    ip6tables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+    # Allow all inbound traffic from VPC IPv6 CIDR
+    ip6tables -A INPUT -s ${TERRAFORM_VPC_IPV6_CIDR} -j ACCEPT
+
+    # Allow DHCPv6 responses (UDP ports 546 and 547)
+    ip6tables -A INPUT -p udp --dport 546 -j ACCEPT
+    ip6tables -A INPUT -p udp --dport 547 -j ACCEPT
+
+    # Allow DNS responses (UDP and TCP port 53) - for DNS resolution
+    ip6tables -A INPUT -p udp --sport 53 -m state --state ESTABLISHED -j ACCEPT
+    ip6tables -A INPUT -p tcp --sport 53 -m state --state ESTABLISHED -j ACCEPT
+
+    # Allow NTP responses (UDP port 123) - for time synchronization
+    ip6tables -A INPUT -p udp --sport 123 -m state --state ESTABLISHED -j ACCEPT
+
+    # Allow HTTPS responses (TCP port 443) - for AWS API calls, package updates
+    ip6tables -A INPUT -p tcp --sport 443 -m state --state ESTABLISHED -j ACCEPT
+
+    # Allow HTTP responses (TCP port 80) - for package updates
+    ip6tables -A INPUT -p tcp --sport 80 -m state --state ESTABLISHED -j ACCEPT
+
+    # Allow AWS metadata service IPv6 (fd00:ec2::254)
+    ip6tables -A INPUT -s fd00:ec2::254 -j ACCEPT
+
+    # Allow ICMPv6 for network diagnostics and IPv6 functionality
+    # Essential ICMPv6 types for IPv6 to function properly
+    ip6tables -A INPUT -p ipv6-icmp --icmpv6-type destination-unreachable -j ACCEPT
+    ip6tables -A INPUT -p ipv6-icmp --icmpv6-type packet-too-big -j ACCEPT
+    ip6tables -A INPUT -p ipv6-icmp --icmpv6-type time-exceeded -j ACCEPT
+    ip6tables -A INPUT -p ipv6-icmp --icmpv6-type parameter-problem -j ACCEPT
+    ip6tables -A INPUT -p ipv6-icmp --icmpv6-type echo-request -j ACCEPT
+    ip6tables -A INPUT -p ipv6-icmp --icmpv6-type echo-reply -j ACCEPT
+    # Neighbor Discovery Protocol (essential for IPv6)
+    ip6tables -A INPUT -p ipv6-icmp --icmpv6-type router-solicitation -j ACCEPT
+    ip6tables -A INPUT -p ipv6-icmp --icmpv6-type router-advertisement -j ACCEPT
+    ip6tables -A INPUT -p ipv6-icmp --icmpv6-type neighbor-solicitation -j ACCEPT
+    ip6tables -A INPUT -p ipv6-icmp --icmpv6-type neighbor-advertisement -j ACCEPT
+
+    # Save ip6tables rules to persist across reboots
+    ip6tables-save > /etc/iptables/rules.v6 2>/dev/null || true
+
+    # For systems using iptables-persistent
+    if command -v netfilter-persistent >/dev/null 2>&1; then
+        netfilter-persistent save
+    fi
+fi
+
 service fck-nat restart
