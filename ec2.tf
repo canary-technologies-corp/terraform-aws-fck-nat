@@ -36,7 +36,6 @@ resource "aws_launch_template" "main" {
   name          = var.name
   image_id      = local.ami_id
   instance_type = var.instance_type
-  key_name      = var.ssh_key_name
 
   block_device_mappings {
     device_name = "/dev/xvda"
@@ -84,6 +83,7 @@ resource "aws_launch_template" "main" {
     TERRAFORM_EIP_ID                 = length(var.eip_allocation_ids) != 0 ? var.eip_allocation_ids[0] : ""
     TERRAFORM_CWAGENT_ENABLED        = var.use_cloudwatch_agent ? "true" : ""
     TERRAFORM_CWAGENT_CFG_PARAM_NAME = local.cwagent_param_name != null ? local.cwagent_param_name : ""
+    TERRAFORM_VPC_CIDR               = data.aws_vpc.main.cidr_block
   }))
 
   # Enforce IMDSv2
