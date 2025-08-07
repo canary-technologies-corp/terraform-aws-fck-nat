@@ -20,15 +20,16 @@ resource "aws_security_group" "main" {
   vpc_id      = data.aws_vpc.main.id
 
   ingress {
-    description = "Unrestricted ingress from within VPC"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = data.aws_vpc.main.cidr_block_associations[*].cidr_block
+    description      = "Unrestricted ingress from within VPC"
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
   }
 
   dynamic "ingress" {
-    for_each = var.use_ssh && (length(var.ssh_cidr_blocks.ipv4) > 0 || length(var.ssh_cidr_blocks.ipv6) > 0) ? [1] : [] #  
+    for_each = var.use_ssh && (length(var.ssh_cidr_blocks.ipv4) > 0 || length(var.ssh_cidr_blocks.ipv6) > 0) ? [1] : [] #
 
     content {
       description      = "SSH access"
@@ -53,10 +54,11 @@ resource "aws_security_group" "main" {
 }
 
 resource "aws_network_interface" "main" {
-  description       = "${var.name} static private ENI"
-  subnet_id         = var.subnet_id
-  security_groups   = [aws_security_group.main.id]
-  source_dest_check = false
+  description        = "${var.name} static private ENI"
+  subnet_id          = var.subnet_id
+  security_groups    = [aws_security_group.main.id]
+  source_dest_check  = false
+  ipv6_address_count = 1
 
   tags = merge({ Name = var.name }, var.tags)
 }
@@ -67,6 +69,14 @@ resource "aws_route" "main" {
   route_table_id         = each.value
   destination_cidr_block = "0.0.0.0/0"
   network_interface_id   = aws_network_interface.main.id
+}
+
+resource "aws_route" "main_ipv6" {
+  for_each = var.update_route_tables || var.update_route_table ? merge(var.route_tables_ids, var.route_table_id != null ? { RESERVED_FKC_NAT = var.route_table_id } : {}) : {}
+
+  route_table_id              = each.value
+  destination_ipv6_cidr_block = "64:ff9b::/96"
+  network_interface_id        = aws_network_interface.main.id
 }
 
 resource "aws_ssm_parameter" "cloudwatch_agent_config" {
