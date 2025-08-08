@@ -113,6 +113,21 @@ data "aws_iam_policy_document" "main" {
       ]
     }
   }
+
+  dynamic "statement" {
+    for_each = var.datadog_secret_name != "" ? ["x"] : []
+
+    content {
+      sid    = "ReadDatadogSecret"
+      effect = "Allow"
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ]
+      resources = [
+        "arn:aws:secretsmanager:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:secret:${var.datadog_secret_name}*"
+      ]
+    }
+  }
 }
 
 resource "aws_iam_policy" "main" {

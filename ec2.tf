@@ -86,6 +86,8 @@ resource "aws_launch_template" "main" {
     TERRAFORM_CWAGENT_CFG_PARAM_NAME = local.cwagent_param_name != null ? local.cwagent_param_name : ""
     TERRAFORM_VPC_CIDR               = data.aws_vpc.main.cidr_block
     TERRAFORM_VPC_IPV6_CIDR          = data.aws_vpc.main.ipv6_cidr_block
+    TERRAFORM_DATADOG_SECRET_NAME    = var.datadog_secret_name
+    TERRAFORM_DATADOG_SECRET_KEY     = var.datadog_secret_key
   }))
 
   # Enforce IMDSv2

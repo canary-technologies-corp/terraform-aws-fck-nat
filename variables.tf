@@ -153,6 +153,16 @@ variable "ssh_cidr_blocks" {
   }
 }
 
+variable "datadog_secret_name" {
+  description = "Name of the secret in AWS Secrets Manager containing the Datadog API key"
+  type        = string
+}
+
+variable "datadog_secret_key" {
+  description = "Key of the secret in AWS Secrets Manager containing the Datadog API key"
+  type        = string
+}
+
 variable "tags" {
   description = "Tags to apply to resources created within the module"
   type        = map(string)
